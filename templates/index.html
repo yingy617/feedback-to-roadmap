@@ -425,6 +425,37 @@
             color: #4c1d95;
             margin-bottom: 4px;
         }
+
+        .grounding-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 12px;
+        }
+
+        .grounding-grounded {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .grounding-needs-review {
+            background: #fecaca;
+            color: #991b1b;
+        }
+
+        .grounding-reasoning {
+            margin-top: 8px;
+            padding: 10px;
+            background: #f3f4f6;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #4b5563;
+            line-height: 1.5;
+        }
     </style>
 </head>
 <body>
@@ -489,8 +520,9 @@
                     <span class="results-count" id="themeCount">0</span>
                 </div>
                 <div id="themesList"></div>
-                <div style="margin-top: 24px;" id="recommendButton">
-                    <button type="button" class="btn-primary" onclick="generateRecommendations()" style="width: 100%;">Generate Recommendations</button>
+                <div style="margin-top: 24px; display: flex; gap: 12px;" id="actionButtons">
+                    <button type="button" class="btn-primary" onclick="generateRecommendations()" style="flex: 1;" id="recommendButton">Generate Recommendations</button>
+                    <button type="button" class="btn-primary" onclick="checkGrounding()" style="flex: 1; display: none;" id="groundingButton">Check Grounding</button>
                 </div>
             </div>
         </div>
@@ -719,11 +751,48 @@
                     return;
                 }
 
+                currentThemes = data.themes;
                 displayRecommendations(data.themes, data.items);
+                document.getElementById('groundingButton').style.display = 'block';
             } catch (err) {
                 showError('Recommendation generation failed. Please try again.');
                 console.error(err);
                 document.getElementById('recommendButton').style.display = 'block';
+            } finally {
+                loading.classList.remove('show');
+            }
+        }
+
+        async function checkGrounding() {
+            if (!currentThemes.length) return;
+
+            loading.classList.add('show');
+            error.classList.remove('show');
+            document.getElementById('groundingButton').style.display = 'none';
+
+            try {
+                const response = await fetch('/check-grounding', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ themes: currentThemes, items: currentItems })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    showError(data.error || 'Failed to check grounding');
+                    document.getElementById('groundingButton').style.display = 'block';
+                    return;
+                }
+
+                currentThemes = data.themes;
+                displayRecommendationsWithGrounding(data.themes, data.items);
+            } catch (err) {
+                showError('Grounding check failed. Please try again.');
+                console.error(err);
+                document.getElementById('groundingButton').style.display = 'block';
             } finally {
                 loading.classList.remove('show');
             }
@@ -762,6 +831,74 @@
                         <div class="supporting-quotes">
                             ${quotesHtml}
                         </div>
+                    </div>
+                    `
+                    : '';
+
+                card.innerHTML = `
+                    <div class="theme-header">
+                        <div class="theme-name">${escapeHtml(theme.name)}</div>
+                        <div class="theme-tags">
+                            <span class="tag ${sentimentClass}">${theme.sentiment}</span>
+                            <span class="tag ${severityClass}">${theme.severity}</span>
+                        </div>
+                    </div>
+                    <div class="theme-items">
+                        ${itemsHtml}
+                    </div>
+                    ${recommendationHtml}
+                `;
+
+                themesGrid.appendChild(card);
+            });
+
+            themesList.appendChild(themesGrid);
+        }
+
+        function displayRecommendationsWithGrounding(themes, items) {
+            const themesList = document.getElementById('themesList');
+            themesList.innerHTML = '';
+
+            const themesGrid = document.createElement('div');
+            themesGrid.className = 'themes-grid';
+
+            themes.forEach((theme) => {
+                const card = document.createElement('div');
+                card.className = 'theme-card';
+
+                const sentimentClass = `tag-sentiment-${theme.sentiment}`;
+                const severityClass = `tag-severity-${theme.severity}`;
+
+                const itemsHtml = theme.items
+                    .map(itemIdx => `<div class="theme-item">${escapeHtml(items[itemIdx - 1])}</div>`)
+                    .join('');
+
+                const quotesHtml = theme.supporting_quotes && theme.supporting_quotes.length > 0
+                    ? theme.supporting_quotes
+                        .map(quote => `<div class="supporting-quote">"${escapeHtml(quote)}"</div>`)
+                        .join('')
+                    : '<p style="color: #9ca3af; font-size: 12px;">No quotes found</p>';
+
+                const groundingClass = theme.grounding_check ? 'grounding-grounded' : 'grounding-needs-review';
+                const groundingHtml = theme.grounding_status
+                    ? `
+                    <div class="grounding-badge ${groundingClass}">
+                        ${escapeHtml(theme.grounding_status)}
+                    </div>
+                    ${theme.grounding_reasoning ? `<div class="grounding-reasoning">${escapeHtml(theme.grounding_reasoning)}</div>` : ''}
+                    `
+                    : '';
+
+                const recommendationHtml = theme.recommendation
+                    ? `
+                    <div class="recommendation-section">
+                        <div class="recommendation-label">📌 Recommendation</div>
+                        <div class="recommendation-text">${escapeHtml(theme.recommendation)}</div>
+                        <div class="recommendation-label">📝 Supporting Quotes</div>
+                        <div class="supporting-quotes">
+                            ${quotesHtml}
+                        </div>
+                        ${groundingHtml}
                     </div>
                     `
                     : '';

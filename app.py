@@ -21,6 +21,80 @@ def parse_feedback(text):
     items = [line.strip() for line in text.split('\n') if line.strip()]
     return items
 
+def check_recommendation_grounding(recommendation, supporting_quotes, theme_items, all_items):
+    """Verify that a recommendation is supported by its source quotes."""
+    if not recommendation or not supporting_quotes:
+        return {
+            'grounded': False,
+            'status': 'Needs review — no supporting quotes',
+            'reasoning': 'Recommendation has no supporting quotes'
+        }
+
+    # Format context for Claude
+    quotes_text = '\n'.join([f'- "{quote}"' for quote in supporting_quotes])
+    all_feedback_text = '\n'.join([f'{i+1}. {all_items[idx-1]}' for i, idx in enumerate(theme_items)])
+
+    prompt = f"""You are a quality assurance reviewer verifying that product recommendations are grounded in user feedback.
+
+RECOMMENDATION:
+{recommendation}
+
+SUPPORTING QUOTES (claimed to support the recommendation):
+{quotes_text}
+
+ALL RELATED FEEDBACK ITEMS (for context):
+{all_feedback_text}
+
+Task: Determine if the recommendation is clearly supported by the supporting quotes.
+
+Criteria for "Grounded":
+- The supporting quotes directly address the need/problem stated in the recommendation
+- The recommendation logically follows from what users are saying
+- The quotes are accurate/exact from the feedback
+
+Criteria for "Needs review":
+- Quotes don't clearly support the recommendation
+- Recommendation overstates or invents claims not in the quotes
+- Disconnect between quotes and recommendation
+
+Return ONLY valid JSON:
+{{
+  "grounded": true or false,
+  "reasoning": "Brief explanation of whether the recommendation is supported by its quotes"
+}}"""
+
+    message = client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=400,
+        messages=[
+            {"role": "user", "content": prompt}
+        ]
+    )
+
+    response_text = message.content[0].text
+
+    try:
+        start = response_text.find('{')
+        end = response_text.rfind('}') + 1
+        if start >= 0 and end > start:
+            json_str = response_text[start:end]
+            result = json.loads(json_str)
+        else:
+            result = json.loads(response_text)
+    except json.JSONDecodeError:
+        return {
+            'grounded': False,
+            'status': 'Needs review — unable to verify',
+            'reasoning': 'Verification check failed'
+        }
+
+    status = 'Grounded' if result.get('grounded') else 'Needs review — not clearly supported'
+    return {
+        'grounded': result.get('grounded', False),
+        'status': status,
+        'reasoning': result.get('reasoning', '')
+    }
+
 def generate_recommendation(theme_name, theme_items, all_items):
     """Use Claude to draft a prioritized recommendation for a theme with source quote grounding."""
     if not theme_items:
@@ -200,6 +274,34 @@ def recommend():
 
     except Exception as e:
         return jsonify({'error': f'Recommendation generation failed: {str(e)}'}), 500
+
+@app.route('/check-grounding', methods=['POST'])
+def check_grounding():
+    """Verify that recommendations are grounded in their supporting quotes."""
+    try:
+        data = request.get_json()
+        themes = data.get('themes', [])
+        items = data.get('items', [])
+
+        if not themes or not items:
+            return jsonify({'error': 'No themes or items provided'}), 400
+
+        # Check grounding for each theme
+        for theme in themes:
+            grounding = check_recommendation_grounding(
+                theme.get('recommendation', ''),
+                theme.get('supporting_quotes', []),
+                theme.get('items', []),
+                items
+            )
+            theme['grounding_status'] = grounding['status']
+            theme['grounding_check'] = grounding['grounded']
+            theme['grounding_reasoning'] = grounding.get('reasoning', '')
+
+        return jsonify({'themes': themes, 'items': items})
+
+    except Exception as e:
+        return jsonify({'error': f'Grounding check failed: {str(e)}'}), 500
 
 if __name__ == '__main__':
     app.run(debug=False, port=5001)
