@@ -372,6 +372,59 @@
             line-height: 1.5;
             border-left: 3px solid #d1d5db;
         }
+
+        .recommendation-section {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .recommendation-label {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #9ca3af;
+            margin-bottom: 8px;
+        }
+
+        .recommendation-text {
+            padding: 12px;
+            background: #fef3c7;
+            border-left: 3px solid #f59e0b;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #78350f;
+            line-height: 1.6;
+            margin-bottom: 12px;
+        }
+
+        .supporting-quotes {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .supporting-quote {
+            padding: 10px;
+            background: #e0e7ff;
+            border-left: 3px solid #6366f1;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #312e81;
+            line-height: 1.5;
+            font-style: italic;
+        }
+
+        .quote-label {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #4c1d95;
+            margin-bottom: 4px;
+        }
     </style>
 </head>
 <body>
@@ -436,6 +489,9 @@
                     <span class="results-count" id="themeCount">0</span>
                 </div>
                 <div id="themesList"></div>
+                <div style="margin-top: 24px;" id="recommendButton">
+                    <button type="button" class="btn-primary" onclick="generateRecommendations()" style="width: 100%;">Generate Recommendations</button>
+                </div>
             </div>
         </div>
     </div>
@@ -560,6 +616,7 @@
         }
 
         let currentItems = [];
+        let currentThemes = [];
 
         async function clusterItems() {
             if (!currentItems.length) return;
@@ -593,6 +650,7 @@
         }
 
         function displayThemes(themes, items) {
+            currentThemes = themes;
             const themesList = document.getElementById('themesList');
             themesList.innerHTML = '';
 
@@ -635,6 +693,97 @@
             themesList.appendChild(themesGrid);
             document.getElementById('themeCount').textContent = themes.length;
             document.getElementById('clustered-results').classList.add('show');
+        }
+
+        async function generateRecommendations() {
+            if (!currentThemes.length) return;
+
+            loading.classList.add('show');
+            error.classList.remove('show');
+            document.getElementById('recommendButton').style.display = 'none';
+
+            try {
+                const response = await fetch('/recommend', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ themes: currentThemes, items: currentItems })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    showError(data.error || 'Failed to generate recommendations');
+                    document.getElementById('recommendButton').style.display = 'block';
+                    return;
+                }
+
+                displayRecommendations(data.themes, data.items);
+            } catch (err) {
+                showError('Recommendation generation failed. Please try again.');
+                console.error(err);
+                document.getElementById('recommendButton').style.display = 'block';
+            } finally {
+                loading.classList.remove('show');
+            }
+        }
+
+        function displayRecommendations(themes, items) {
+            const themesList = document.getElementById('themesList');
+            themesList.innerHTML = '';
+
+            const themesGrid = document.createElement('div');
+            themesGrid.className = 'themes-grid';
+
+            themes.forEach((theme) => {
+                const card = document.createElement('div');
+                card.className = 'theme-card';
+
+                const sentimentClass = `tag-sentiment-${theme.sentiment}`;
+                const severityClass = `tag-severity-${theme.severity}`;
+
+                const itemsHtml = theme.items
+                    .map(itemIdx => `<div class="theme-item">${escapeHtml(items[itemIdx - 1])}</div>`)
+                    .join('');
+
+                const quotesHtml = theme.supporting_quotes && theme.supporting_quotes.length > 0
+                    ? theme.supporting_quotes
+                        .map(quote => `<div class="supporting-quote">"${escapeHtml(quote)}"</div>`)
+                        .join('')
+                    : '<p style="color: #9ca3af; font-size: 12px;">No quotes found</p>';
+
+                const recommendationHtml = theme.recommendation
+                    ? `
+                    <div class="recommendation-section">
+                        <div class="recommendation-label">📌 Recommendation</div>
+                        <div class="recommendation-text">${escapeHtml(theme.recommendation)}</div>
+                        <div class="recommendation-label">📝 Supporting Quotes</div>
+                        <div class="supporting-quotes">
+                            ${quotesHtml}
+                        </div>
+                    </div>
+                    `
+                    : '';
+
+                card.innerHTML = `
+                    <div class="theme-header">
+                        <div class="theme-name">${escapeHtml(theme.name)}</div>
+                        <div class="theme-tags">
+                            <span class="tag ${sentimentClass}">${theme.sentiment}</span>
+                            <span class="tag ${severityClass}">${theme.severity}</span>
+                        </div>
+                    </div>
+                    <div class="theme-items">
+                        ${itemsHtml}
+                    </div>
+                    ${recommendationHtml}
+                `;
+
+                themesGrid.appendChild(card);
+            });
+
+            themesList.appendChild(themesGrid);
         }
     </script>
 </body>

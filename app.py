@@ -21,6 +21,56 @@ def parse_feedback(text):
     items = [line.strip() for line in text.split('\n') if line.strip()]
     return items
 
+def generate_recommendation(theme_name, theme_items, all_items):
+    """Use Claude to draft a prioritized recommendation for a theme with source quote grounding."""
+    if not theme_items:
+        return {'recommendation': '', 'supporting_quotes': []}
+
+    # Format items for Claude
+    items_text = '\n'.join([f'- {all_items[idx - 1]}' for idx in theme_items])
+
+    prompt = f"""You are a product manager synthesizing user feedback into prioritized recommendations.
+
+Theme: {theme_name}
+Related feedback items:
+{items_text}
+
+Generate:
+1. A single, prioritized product recommendation (1-2 sentences, action-oriented)
+2. A list of the most relevant quotes that support this recommendation
+
+Return ONLY valid JSON with this exact structure:
+{{
+  "recommendation": "Specific, actionable recommendation here",
+  "supporting_quotes": ["Exact quote from feedback item 1", "Exact quote from feedback item 2"]
+}}
+
+Be precise: supporting_quotes should be EXACT strings from the feedback items above, not paraphrased."""
+
+    message = client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=800,
+        messages=[
+            {"role": "user", "content": prompt}
+        ]
+    )
+
+    response_text = message.content[0].text
+
+    # Extract JSON from response
+    try:
+        start = response_text.find('{')
+        end = response_text.rfind('}') + 1
+        if start >= 0 and end > start:
+            json_str = response_text[start:end]
+            result = json.loads(json_str)
+        else:
+            result = json.loads(response_text)
+    except json.JSONDecodeError:
+        return {'recommendation': '', 'supporting_quotes': [], 'error': 'Failed to parse recommendation'}
+
+    return result
+
 def cluster_and_tag_feedback(items):
     """Use Claude to cluster feedback items into themes and tag sentiment/severity."""
     if not items:
@@ -128,6 +178,28 @@ def cluster():
 
     except Exception as e:
         return jsonify({'error': f'Clustering failed: {str(e)}'}), 500
+
+@app.route('/recommend', methods=['POST'])
+def recommend():
+    """Generate recommendations for clustered themes."""
+    try:
+        data = request.get_json()
+        themes = data.get('themes', [])
+        items = data.get('items', [])
+
+        if not themes or not items:
+            return jsonify({'error': 'No themes or items provided'}), 400
+
+        # Generate recommendation for each theme
+        for theme in themes:
+            rec = generate_recommendation(theme['name'], theme['items'], items)
+            theme['recommendation'] = rec.get('recommendation', '')
+            theme['supporting_quotes'] = rec.get('supporting_quotes', [])
+
+        return jsonify({'themes': themes, 'items': items})
+
+    except Exception as e:
+        return jsonify({'error': f'Recommendation generation failed: {str(e)}'}), 500
 
 if __name__ == '__main__':
     app.run(debug=False, port=5001)
