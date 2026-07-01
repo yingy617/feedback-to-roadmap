@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feedback to Roadmap</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: #f9fafb;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 32px;
+            margin-bottom: 8px;
+            font-weight: 700;
+        }
+
+        .subtitle {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .form-section {
+            margin-bottom: 32px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 180px;
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 14px;
+            resize: vertical;
+            transition: border-color 0.2s;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .divider {
+            text-align: center;
+            margin: 32px 0;
+            position: relative;
+        }
+
+        .divider::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: #e5e7eb;
+        }
+
+        .divider-text {
+            background: white;
+            padding: 0 16px;
+            color: #9ca3af;
+            font-size: 12px;
+            position: relative;
+        }
+
+        .file-upload {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .file-label {
+            display: block;
+            padding: 24px;
+            border: 2px dashed #d1d5db;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: #fafbfc;
+        }
+
+        .file-label:hover {
+            border-color: #667eea;
+            background: #f3f4f6;
+        }
+
+        .file-label.active {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+
+        .file-label-text {
+            font-size: 14px;
+            color: #6b7280;
+        }
+
+        .file-label-file {
+            font-size: 12px;
+            color: #9ca3af;
+            margin-top: 8px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 32px;
+        }
+
+        button {
+            flex: 1;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: #e5e7eb;
+            color: #374151;
+        }
+
+        .btn-secondary:hover {
+            background: #d1d5db;
+        }
+
+        .results {
+            margin-top: 40px;
+            display: none;
+        }
+
+        .results.show {
+            display: block;
+        }
+
+        .results-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        .results-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #111827;
+        }
+
+        .results-count {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .items-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .item {
+            padding: 16px;
+            background: #f9fafb;
+            border-left: 4px solid #667eea;
+            border-radius: 4px;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #374151;
+        }
+
+        .item-number {
+            font-size: 12px;
+            color: #9ca3af;
+            margin-bottom: 6px;
+        }
+
+        .error {
+            display: none;
+            padding: 16px;
+            background: #fee;
+            border-left: 4px solid #f87171;
+            border-radius: 4px;
+            color: #991b1b;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        .error.show {
+            display: block;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #667eea;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            border: 3px solid #e5e7eb;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-bottom: 12px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .themes-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .theme-card {
+            padding: 20px;
+            background: #f9fafb;
+            border-left: 4px solid #667eea;
+            border-radius: 8px;
+        }
+
+        .theme-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .theme-name {
+            font-size: 16px;
+            font-weight: 700;
+            color: #111827;
+        }
+
+        .theme-tags {
+            display: flex;
+            gap: 8px;
+        }
+
+        .tag {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .tag-sentiment-positive {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .tag-sentiment-negative {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .tag-sentiment-neutral {
+            background: #f3f4f6;
+            color: #4b5563;
+        }
+
+        .tag-severity-low {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .tag-severity-medium {
+            background: #fef3c7;
+            color: #b45309;
+        }
+
+        .tag-severity-high {
+            background: #fecaca;
+            color: #991b1b;
+        }
+
+        .theme-items {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .theme-item {
+            padding: 10px;
+            background: white;
+            border-radius: 4px;
+            font-size: 13px;
+            color: #4b5563;
+            line-height: 1.5;
+            border-left: 3px solid #d1d5db;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Feedback to Roadmap</h1>
+            <p class="subtitle">Turn raw feedback into actionable insights</p>
+        </header>
+
+        <div class="content">
+            <form id="feedbackForm">
+                <div class="form-section">
+                    <label class="form-label">Paste Feedback</label>
+                    <textarea id="feedbackText" placeholder="Paste one feedback item per line..."></textarea>
+                </div>
+
+                <div class="divider">
+                    <span class="divider-text">or</span>
+                </div>
+
+                <div class="form-section">
+                    <label class="form-label">Upload File</label>
+                    <div class="file-upload">
+                        <input type="file" id="feedbackFile" class="file-input" accept=".txt,.csv">
+                        <label for="feedbackFile" class="file-label">
+                            <div class="file-label-text">
+                                📄 Click to upload or drag and drop
+                            </div>
+                            <div class="file-label-file">
+                                Supports .txt and .csv files
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button type="submit" class="btn-primary">Parse Feedback</button>
+                    <button type="button" class="btn-secondary" onclick="resetForm()">Clear</button>
+                </div>
+            </form>
+
+            <div class="error" id="error"></div>
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Processing feedback...</p>
+            </div>
+
+            <div class="results" id="results">
+                <div class="results-header">
+                    <div class="results-title">Parsed Items</div>
+                    <span class="results-count" id="resultCount">0</span>
+                </div>
+                <div class="items-list" id="itemsList"></div>
+                <div style="margin-top: 24px;">
+                    <button type="button" class="btn-primary" onclick="clusterItems()" style="width: 100%;">Cluster & Tag Themes</button>
+                </div>
+            </div>
+
+            <div class="results" id="clustered-results">
+                <div class="results-header">
+                    <div class="results-title">Themes & Recommendations</div>
+                    <span class="results-count" id="themeCount">0</span>
+                </div>
+                <div id="themesList"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('feedbackForm');
+        const feedbackText = document.getElementById('feedbackText');
+        const feedbackFile = document.getElementById('feedbackFile');
+        const fileLabel = document.querySelector('.file-label');
+        const error = document.getElementById('error');
+        const loading = document.getElementById('loading');
+        const results = document.getElementById('results');
+        const itemsList = document.getElementById('itemsList');
+        const resultCount = document.getElementById('resultCount');
+
+        // File drag and drop
+        fileLabel.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            fileLabel.classList.add('active');
+        });
+
+        fileLabel.addEventListener('dragleave', () => {
+            fileLabel.classList.remove('active');
+        });
+
+        fileLabel.addEventListener('drop', (e) => {
+            e.preventDefault();
+            fileLabel.classList.remove('active');
+            if (e.dataTransfer.files.length) {
+                feedbackFile.files = e.dataTransfer.files;
+                updateFileName();
+            }
+        });
+
+        feedbackFile.addEventListener('change', updateFileName);
+
+        function updateFileName() {
+            if (feedbackFile.files.length) {
+                document.querySelector('.file-label-file').textContent =
+                    `Selected: ${feedbackFile.files[0].name}`;
+            }
+        }
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            error.classList.remove('show');
+            results.classList.remove('show');
+
+            // Validate input
+            if (!feedbackText.value.trim() && !feedbackFile.files.length) {
+                showError('Please paste feedback or upload a file.');
+                return;
+            }
+
+            loading.classList.add('show');
+
+            // Prepare form data
+            const formData = new FormData();
+            if (feedbackText.value.trim()) {
+                formData.append('feedback_text', feedbackText.value);
+            }
+            if (feedbackFile.files.length) {
+                formData.append('feedback_file', feedbackFile.files[0]);
+            }
+
+            try {
+                const response = await fetch('/parse', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    showError(data.error || 'An error occurred.');
+                    return;
+                }
+
+                displayResults(data.items, data.count);
+            } catch (err) {
+                showError('Failed to process feedback. Please try again.');
+                console.error(err);
+            } finally {
+                loading.classList.remove('show');
+            }
+        });
+
+        function displayResults(items, count) {
+            currentItems = items;
+            itemsList.innerHTML = '';
+            items.forEach((item, index) => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'item';
+                itemDiv.innerHTML = `
+                    <div class="item-number">Item ${index + 1}</div>
+                    ${escapeHtml(item)}
+                `;
+                itemsList.appendChild(itemDiv);
+            });
+
+            resultCount.textContent = count;
+            results.classList.add('show');
+        }
+
+        function showError(message) {
+            error.textContent = message;
+            error.classList.add('show');
+        }
+
+        function resetForm() {
+            form.reset();
+            feedbackFile.files = new FileList();
+            document.querySelector('.file-label-file').textContent = 'Supports .txt and .csv files';
+            results.classList.remove('show');
+            error.classList.remove('show');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        let currentItems = [];
+
+        async function clusterItems() {
+            if (!currentItems.length) return;
+
+            loading.classList.add('show');
+            error.classList.remove('show');
+
+            try {
+                const response = await fetch('/cluster', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ items: currentItems })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    showError(data.error || 'Failed to cluster feedback');
+                    return;
+                }
+
+                displayThemes(data.themes, data.original_items);
+            } catch (err) {
+                showError('Clustering failed. Please try again.');
+                console.error(err);
+            } finally {
+                loading.classList.remove('show');
+            }
+        }
+
+        function displayThemes(themes, items) {
+            const themesList = document.getElementById('themesList');
+            themesList.innerHTML = '';
+
+            if (!themes || themes.length === 0) {
+                themesList.innerHTML = '<p style="color: #9ca3af;">No themes identified. Try with more feedback items.</p>';
+                document.getElementById('clustered-results').classList.add('show');
+                return;
+            }
+
+            const themesGrid = document.createElement('div');
+            themesGrid.className = 'themes-grid';
+
+            themes.forEach((theme, index) => {
+                const card = document.createElement('div');
+                card.className = 'theme-card';
+
+                const sentimentClass = `tag-sentiment-${theme.sentiment}`;
+                const severityClass = `tag-severity-${theme.severity}`;
+
+                const itemsHtml = theme.items
+                    .map(itemIdx => `<div class="theme-item">${escapeHtml(items[itemIdx - 1])}</div>`)
+                    .join('');
+
+                card.innerHTML = `
+                    <div class="theme-header">
+                        <div class="theme-name">${escapeHtml(theme.name)}</div>
+                        <div class="theme-tags">
+                            <span class="tag ${sentimentClass}">${theme.sentiment}</span>
+                            <span class="tag ${severityClass}">${theme.severity}</span>
+                        </div>
+                    </div>
+                    <div class="theme-items">
+                        ${itemsHtml}
+                    </div>
+                `;
+
+                themesGrid.appendChild(card);
+            });
+
+            themesList.appendChild(themesGrid);
+            document.getElementById('themeCount').textContent = themes.length;
+            document.getElementById('clustered-results').classList.add('show');
+        }
+    </script>
+</body>
+</html>
