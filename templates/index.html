@@ -456,6 +456,73 @@
             color: #4b5563;
             line-height: 1.5;
         }
+
+        .approval-section {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .approval-buttons {
+            display: flex;
+            gap: 8px;
+            flex: 1;
+        }
+
+        .btn-approve, .btn-reject {
+            flex: 1;
+            padding: 10px 16px;
+            border: 2px solid #e5e7eb;
+            background: white;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-approve {
+            border-color: #dcfce7;
+            color: #166534;
+        }
+
+        .btn-approve:hover {
+            background: #dcfce7;
+        }
+
+        .btn-approve.active {
+            background: #dcfce7;
+            border-color: #166534;
+        }
+
+        .btn-reject {
+            border-color: #fecaca;
+            color: #991b1b;
+        }
+
+        .btn-reject:hover {
+            background: #fecaca;
+        }
+
+        .btn-reject.active {
+            background: #fecaca;
+            border-color: #991b1b;
+        }
+
+        .rank-badge {
+            display: inline-block;
+            background: #f0f4ff;
+            color: #667eea;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-left: auto;
+        }
     </style>
 </head>
 <body>
@@ -523,6 +590,9 @@
                 <div style="margin-top: 24px; display: flex; gap: 12px;" id="actionButtons">
                     <button type="button" class="btn-primary" onclick="generateRecommendations()" style="flex: 1;" id="recommendButton">Generate Recommendations</button>
                     <button type="button" class="btn-primary" onclick="checkGrounding()" style="flex: 1; display: none;" id="groundingButton">Check Grounding</button>
+                </div>
+                <div style="margin-top: 24px; display: none;" id="exportSection">
+                    <button type="button" class="btn-primary" onclick="exportApproved()" style="width: 100%; background: linear-gradient(135deg, #10b981 0%, #059669 100%);">📥 Export Approved as PRD</button>
                 </div>
             </div>
         </div>
@@ -865,6 +935,7 @@
             themes.forEach((theme) => {
                 const card = document.createElement('div');
                 card.className = 'theme-card';
+                card.id = `theme-${escapeHtml(theme.name).replace(/\s+/g, '-')}`;
 
                 const sentimentClass = `tag-sentiment-${theme.sentiment}`;
                 const severityClass = `tag-severity-${theme.severity}`;
@@ -889,6 +960,9 @@
                     `
                     : '';
 
+                const rankScore = theme.rank_score || 0;
+                const rankHtml = `<span class="rank-badge">Impact: ${rankScore}</span>`;
+
                 const recommendationHtml = theme.recommendation
                     ? `
                     <div class="recommendation-section">
@@ -899,6 +973,12 @@
                             ${quotesHtml}
                         </div>
                         ${groundingHtml}
+                        <div class="approval-section">
+                            <div class="approval-buttons">
+                                <button class="btn-approve" data-theme="${escapeHtml(theme.name)}" onclick="setApproval(this, 'approved')">✓ Approve</button>
+                                <button class="btn-reject" data-theme="${escapeHtml(theme.name)}" onclick="setApproval(this, 'rejected')">✕ Reject</button>
+                            </div>
+                        </div>
                     </div>
                     `
                     : '';
@@ -909,6 +989,7 @@
                         <div class="theme-tags">
                             <span class="tag ${sentimentClass}">${theme.sentiment}</span>
                             <span class="tag ${severityClass}">${theme.severity}</span>
+                            ${rankHtml}
                         </div>
                     </div>
                     <div class="theme-items">
@@ -921,6 +1002,65 @@
             });
 
             themesList.appendChild(themesGrid);
+            document.getElementById('exportSection').style.display = 'block';
+        }
+
+        function setApproval(button, status) {
+            const themeName = button.getAttribute('data-theme');
+            const container = button.closest('.approval-buttons');
+
+            // Remove active state from both buttons
+            container.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
+
+            // Add active state to clicked button
+            button.classList.add('active');
+
+            // Update theme approval status in currentThemes
+            const theme = currentThemes.find(t => t.name === themeName);
+            if (theme) {
+                theme.approval_status = status === 'approved' ? 'approved' : 'rejected';
+            }
+        }
+
+        async function exportApproved() {
+            const approvedCount = currentThemes.filter(t => t.approval_status === 'approved').length;
+
+            if (approvedCount === 0) {
+                showError('No approved recommendations to export. Please approve at least one recommendation.');
+                return;
+            }
+
+            try {
+                const response = await fetch('/export', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ themes: currentThemes })
+                });
+
+                if (!response.ok) {
+                    const data = await response.json();
+                    showError(data.error || 'Export failed');
+                    return;
+                }
+
+                const html = await response.text();
+
+                // Create a blob and download
+                const blob = new Blob([html], { type: 'text/html' });
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `roadmap-${new Date().toISOString().split('T')[0]}.html`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(url);
+            } catch (err) {
+                showError('Download failed. Please try again.');
+                console.error(err);
+            }
         }
     </script>
 </body>

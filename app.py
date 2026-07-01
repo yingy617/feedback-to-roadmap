@@ -297,11 +297,194 @@ def check_grounding():
             theme['grounding_status'] = grounding['status']
             theme['grounding_check'] = grounding['grounded']
             theme['grounding_reasoning'] = grounding.get('reasoning', '')
+            # Initialize approval status
+            if 'approval_status' not in theme:
+                theme['approval_status'] = None
+
+        # Rank themes by frequency × severity
+        severity_scores = {'low': 1, 'medium': 2, 'high': 3}
+        for theme in themes:
+            frequency = len(theme.get('items', []))
+            severity = severity_scores.get(theme.get('severity', 'low'), 1)
+            theme['rank_score'] = frequency * severity
+
+        # Sort by rank score descending
+        themes.sort(key=lambda t: t.get('rank_score', 0), reverse=True)
 
         return jsonify({'themes': themes, 'items': items})
 
     except Exception as e:
         return jsonify({'error': f'Grounding check failed: {str(e)}'}), 500
 
+@app.route('/export', methods=['POST'])
+def export():
+    """Export approved recommendations as an HTML document."""
+    try:
+        data = request.get_json()
+        themes = data.get('themes', [])
+
+        # Filter to only approved themes
+        approved_themes = [t for t in themes if t.get('approval_status') == 'approved']
+
+        if not approved_themes:
+            return jsonify({'error': 'No approved recommendations to export'}), 400
+
+        # Generate HTML document
+        html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feedback to Roadmap - PRD</title>
+    <style>
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            background: #f9fafb;
+            color: #374151;
+            line-height: 1.6;
+        }}
+        .header {{
+            text-align: center;
+            margin-bottom: 40px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 20px;
+        }}
+        .header h1 {{
+            margin: 0;
+            color: #111827;
+            font-size: 32px;
+        }}
+        .header p {{
+            margin: 8px 0 0 0;
+            color: #6b7280;
+            font-size: 16px;
+        }}
+        .recommendation {{
+            background: white;
+            padding: 24px;
+            margin-bottom: 24px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }}
+        .rec-title {{
+            font-size: 20px;
+            font-weight: 700;
+            color: #111827;
+            margin: 0 0 12px 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }}
+        .rec-meta {{
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }}
+        .badge {{
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }}
+        .badge-sentiment-positive {{ background: #dcfce7; color: #166534; }}
+        .badge-sentiment-negative {{ background: #fee2e2; color: #991b1b; }}
+        .badge-sentiment-neutral {{ background: #f3f4f6; color: #4b5563; }}
+        .badge-severity-low {{ background: #dbeafe; color: #1e40af; }}
+        .badge-severity-medium {{ background: #fef3c7; color: #b45309; }}
+        .badge-severity-high {{ background: #fecaca; color: #991b1b; }}
+        .rec-text {{
+            padding: 14px;
+            background: #fef3c7;
+            border-left: 3px solid #f59e0b;
+            border-radius: 4px;
+            margin-bottom: 16px;
+            font-size: 15px;
+            line-height: 1.6;
+        }}
+        .rec-label {{
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #9ca3af;
+            margin-top: 16px;
+            margin-bottom: 8px;
+        }}
+        .quote {{
+            padding: 12px;
+            background: #e0e7ff;
+            border-left: 3px solid #6366f1;
+            border-radius: 4px;
+            font-size: 13px;
+            color: #312e81;
+            font-style: italic;
+            margin-bottom: 8px;
+        }}
+        .footer {{
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+            color: #9ca3af;
+            font-size: 12px;
+        }}
+        @media print {{
+            body {{ background: white; }}
+            .recommendation {{ page-break-inside: avoid; }}
+        }}
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Product Recommendations</h1>
+        <p>Generated from user feedback analysis</p>
+    </div>
+"""
+
+        # Add each approved recommendation
+        for theme in approved_themes:
+            sentiment = theme.get('sentiment', 'neutral')
+            severity = theme.get('severity', 'low')
+
+            quotes_html = ''
+            if theme.get('supporting_quotes'):
+                for quote in theme['supporting_quotes']:
+                    quotes_html += f'<div class="quote">"{quote}"</div>\n'
+
+            grounding_indicator = ''
+            if theme.get('grounding_check'):
+                grounding_indicator = ' ✓'
+
+            html += f"""    <div class="recommendation">
+        <div class="rec-title">{theme['name']}{grounding_indicator}</div>
+        <div class="rec-meta">
+            <span class="badge badge-sentiment-{sentiment}">{sentiment}</span>
+            <span class="badge badge-severity-{severity}">{severity}</span>
+        </div>
+        <div class="rec-text">{theme.get('recommendation', '')}</div>
+        <div class="rec-label">Supporting Evidence</div>
+        {quotes_html}
+    </div>
+"""
+
+        html += """    <div class="footer">
+        <p>Generated by Feedback to Roadmap</p>
+    </div>
+</body>
+</html>"""
+
+        return html, 200, {'Content-Type': 'text/html', 'Content-Disposition': 'attachment; filename="roadmap.html"'}
+
+    except Exception as e:
+        return jsonify({'error': f'Export failed: {str(e)}'}), 500
+
 if __name__ == '__main__':
-    app.run(debug=False, port=5001)
+    debug_mode = os.getenv('FLASK_ENV') == 'development'
+    app.run(debug=debug_mode, port=5001)

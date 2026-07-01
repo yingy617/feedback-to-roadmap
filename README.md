@@ -75,10 +75,55 @@ Parses feedback and returns individual items.
 }
 ```
 
+## Deploy to Production (Render)
+
+### Prerequisites
+- GitHub account (to host the code)
+- Render account (free tier available at https://render.com)
+- Claude API key from https://console.anthropic.com
+
+### Steps
+
+1. **Push to GitHub**
+   ```bash
+   git remote add origin https://github.com/YOUR_USERNAME/feedback-to-roadmap.git
+   git branch -M main
+   git push -u origin main
+   ```
+
+2. **Create a Render Web Service**
+   - Go to https://render.com
+   - Click "New +" → "Web Service"
+   - Connect your GitHub repo
+   - Configure:
+     - **Name**: `feedback-to-roadmap` (or your choice)
+     - **Environment**: Python 3
+     - **Build command**: `pip install -r requirements.txt`
+     - **Start command**: `gunicorn app:app`
+     - **Region**: Choose closest to you
+
+3. **Set Environment Variables**
+   - In Render dashboard, go to your Web Service
+   - Click "Environment" tab
+   - Add new variable:
+     - **Key**: `ANTHROPIC_API_KEY`
+     - **Value**: Paste your Claude API key (never in code, only here)
+   - Click "Save"
+
+4. **Deploy**
+   - Render auto-deploys when you push to GitHub
+   - Your app will be live at: `https://feedback-to-roadmap.onrender.com`
+
+### Important Security Notes
+- **Never** commit `.env` file to GitHub
+- **Always** set `ANTHROPIC_API_KEY` as an environment variable on your hosting platform
+- `.env` is in `.gitignore` to prevent accidental commits
+- Production uses `gunicorn`, local dev uses Flask dev server
+
 ## Milestones
 
-- [x] Milestone 1: Input + item display (current)
-- [ ] Milestone 2: LLM clustering + tagging
-- [ ] Milestone 3: Recommendations + source quotes
-- [ ] Milestone 4: Grounding check
-- [ ] Milestone 5: Review UI + deploy
+- [x] Milestone 1: Input + item display
+- [x] Milestone 2: LLM clustering + tagging
+- [x] Milestone 3: Recommendations + source quotes
+- [x] Milestone 4: Grounding verification
+- [x] Milestone 5: Review UI (approval buttons, ranking) + deployment
