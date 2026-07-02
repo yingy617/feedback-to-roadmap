@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s http://localhost:5000/)",
+      "Bash(curl -s -X POST http://localhost:5001/parse -d 'feedback_text=Users want dark mode\\\\nApp crashes on login\\\\nNeeds better search')",
+      "Bash(python -m json.tool)",
+      "Bash(python3 -m json.tool)",
+      "Bash(curl -s -X POST http://localhost:5001/parse -F feedback_file=@/tmp/test_feedback.txt)",
+      "Bash(curl -s -X POST http://localhost:5001/parse -d 'feedback_text=Test item 1 *)",
+      "Bash(curl -v -X POST http://localhost:5001/parse -H 'Content-Type: application/x-www-form-urlencoded' -d 'feedback_text=The UI is not intuitive')",
+      "Bash(curl -X POST http://localhost:5001/parse -F 'feedback_text=The UI is not intuitive')",
+      "Bash(curl -s http://localhost:5001/)",
+      "Bash(git init *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
+    ]
+  }
+}

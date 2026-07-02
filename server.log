@@ -1,0 +1,4 @@
+Traceback (most recent call last):
+  File "app.py", line 16, in <module>
+    raise ValueError("ANTHROPIC_API_KEY not found in .env file")
+ValueError: ANTHROPIC_API_KEY not found in .env file
