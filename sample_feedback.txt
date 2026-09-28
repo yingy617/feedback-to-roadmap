@@ -1,0 +1,30 @@
+The app takes forever to load on my phone, sometimes 10+ seconds.
+Search never finds what I'm looking for unless I type the exact title.
+I love the new dark mode, it's so much easier on my eyes at night.
+Checkout crashed twice when I tried to apply a promo code.
+Please add a way to export my data to CSV.
+Notifications are way too frequent, I get pinged for everything.
+The onboarding tutorial was confusing and I skipped it halfway.
+Dashboard loads slowly when I have more than 50 projects.
+I can't find where to change my password, the settings menu is a maze.
+Would be great to have a Slack integration for alerts.
+Customer support took three days to answer a simple billing question.
+The mobile app logs me out every single day.
+Search results are cluttered with irrelevant old items.
+Dark mode is great but some charts are unreadable in it.
+I was charged twice for my subscription this month.
+Exporting reports to PDF cuts off the right side of tables.
+Love how fast the desktop app is compared to the old version.
+The pricing page doesn't explain what's in each tier.
+I want to be able to mute notifications for specific projects.
+Every time I update the app my saved filters disappear.
+Support chat is great when you finally reach a human.
+Team invites expire too quickly, my colleagues keep missing them.
+Uploading large files fails without any error message.
+Keyboard shortcuts would make me so much faster.
+The app freezes when I scroll through long comment threads.
+Billing emails go to the wrong address and I can't change it.
+Please let me integrate with Google Calendar.
+Password reset email never arrived.
+Filters in search are hidden behind too many clicks.
+The new editor is a big improvement, thank you!

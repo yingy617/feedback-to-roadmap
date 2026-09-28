@@ -75,6 +75,35 @@ Parses feedback and returns individual items.
 }
 ```
 
+Pasted text and an uploaded file are combined.
+
+### POST /cluster, /recommend, /check-grounding, /export
+Run the pipeline stages. The first three return a `metrics` object with `wall_ms`, `llm_calls`, `input_tokens`, `output_tokens`, `cost_usd` and per-call detail. `/check-grounding` also returns `quote_checks` per theme (`quote`, `verified`, `location`).
+
+## Quality, Speed & Cost
+
+- **Deterministic quote check.** Before the LLM grounding pass, code confirms every supporting quote actually appears in the source feedback (case, whitespace and smart-quote insensitive; `...` fragments must appear in order). Quotes that aren't found are flagged in the UI and dropped from the export, and only verified quotes are sent to the LLM. If none are verified, the LLM call is skipped. The model isn't trusted to grade itself on something code can verify.
+- **Parallel per-theme calls.** Recommendations and grounding checks run concurrently in a thread pool (`MAX_WORKERS`, default 8; set to 1 for sequential).
+- **Token and latency logging.** Every Claude call logs latency and `usage.input_tokens` / `usage.output_tokens`. Each endpoint returns a `metrics` object (wall time, calls, tokens, estimated cost), and the UI shows the running totals.
+
+### Configuration (env vars)
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `CLAUDE_MODEL` | `claude-sonnet-4-6` | Model used for all calls |
+| `MAX_WORKERS` | `8` | Concurrent per-theme calls (1 = sequential) |
+| `PRICE_INPUT_PER_MTOK` | `3.0` | USD per 1M input tokens, for cost estimates |
+| `PRICE_OUTPUT_PER_MTOK` | `15.0` | USD per 1M output tokens, for cost estimates |
+
+### Benchmark
+
+```bash
+python benchmark.py                      # uses sample_feedback.txt, 8 workers
+python benchmark.py my_feedback.txt 4    # custom file / worker count
+```
+
+Runs clustering once, then recommend + grounding sequentially and in parallel, and prints latency, tokens, cost and how many quotes failed the source check. Makes real API calls (a few cents).
+
 ## Deploy to Production (Render)
 
 ### Prerequisites

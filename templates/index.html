@@ -440,6 +440,34 @@
             gap: 8px;
         }
 
+        .quote-unverified {
+            opacity: 0.6;
+            text-decoration: line-through;
+        }
+        .quote-flag {
+            display: inline-block;
+            margin-left: 6px;
+            font-size: 10px;
+            font-weight: 700;
+            font-style: normal;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            color: #991b1b;
+        }
+        .quote-flag.ok { color: #166534; }
+        .metrics-panel {
+            display: none;
+            margin: 16px 0;
+            padding: 12px 16px;
+            background: #f3f4f6;
+            border-radius: 8px;
+            font-size: 12px;
+            color: #4b5563;
+            font-variant-numeric: tabular-nums;
+        }
+        .metrics-panel.show { display: block; }
+        .metrics-panel strong { color: #111827; }
+        .metrics-panel .metrics-row { margin-top: 4px; }
         .supporting-quote {
             padding: 12px 16px;
             background: linear-gradient(135deg, #e0e7ff 0%, #ddd6fe 100%);
@@ -611,6 +639,8 @@
                 <p>Processing feedback...</p>
             </div>
 
+            <div class="metrics-panel" id="metricsPanel"></div>
+
             <div class="results" id="results">
                 <div class="results-header">
                     <div class="results-title">Parsed Items</div>
@@ -724,6 +754,7 @@
 
         function displayResults(items, count) {
             currentItems = items;
+            resetMetrics();
             itemsList.innerHTML = '';
             items.forEach((item, index) => {
                 const itemDiv = document.createElement('div');
@@ -746,10 +777,14 @@
 
         function resetForm() {
             form.reset();
-            feedbackFile.files = new FileList();
+            feedbackFile.value = '';
             document.querySelector('.file-label-file').textContent = 'Supports .txt and .csv files';
             results.classList.remove('show');
+            document.getElementById('clustered-results').classList.remove('show');
             error.classList.remove('show');
+            currentItems = [];
+            currentThemes = [];
+            resetMetrics();
         }
 
         function escapeHtml(text) {
@@ -760,6 +795,40 @@
 
         let currentItems = [];
         let currentThemes = [];
+        let runMetrics = [];
+
+        function resetMetrics() {
+            runMetrics = [];
+            renderMetrics();
+        }
+
+        function addMetrics(m) {
+            if (!m) return;
+            // Re-running a stage replaces its previous numbers
+            runMetrics = runMetrics.filter(x => x.stage !== m.stage);
+            runMetrics.push(m);
+            renderMetrics();
+        }
+
+        function renderMetrics() {
+            const panel = document.getElementById('metricsPanel');
+            if (!runMetrics.length) {
+                panel.classList.remove('show');
+                panel.innerHTML = '';
+                return;
+            }
+            const sum = (k) => runMetrics.reduce((a, m) => a + (m[k] || 0), 0);
+            const fmtS = (ms) => (ms / 1000).toFixed(1) + 's';
+            const rows = runMetrics.map(m =>
+                `<div class="metrics-row">${escapeHtml(m.stage)}: ${fmtS(m.wall_ms)} · ${m.llm_calls} call(s) · ` +
+                `${m.input_tokens.toLocaleString()} in / ${m.output_tokens.toLocaleString()} out · $${m.cost_usd.toFixed(4)}</div>`
+            ).join('');
+            panel.innerHTML =
+                `<div><strong>This run:</strong> ${fmtS(sum('wall_ms'))} · ${sum('llm_calls')} Claude calls · ` +
+                `${(sum('input_tokens') + sum('output_tokens')).toLocaleString()} tokens · est. $${sum('cost_usd').toFixed(4)}</div>` +
+                rows;
+            panel.classList.add('show');
+        }
 
         async function clusterItems() {
             if (!currentItems.length) return;
@@ -783,6 +852,7 @@
                     return;
                 }
 
+                addMetrics(data.metrics);
                 displayThemes(data.themes, data.original_items);
             } catch (err) {
                 showError('Clustering failed. Please try again.');
@@ -863,6 +933,7 @@
                 }
 
                 currentThemes = data.themes;
+                addMetrics(data.metrics);
                 displayRecommendations(data.themes, data.items);
                 document.getElementById('groundingButton').style.display = 'block';
             } catch (err) {
@@ -899,6 +970,7 @@
                 }
 
                 currentThemes = data.themes;
+                addMetrics(data.metrics);
                 displayRecommendationsWithGrounding(data.themes, data.items);
             } catch (err) {
                 showError('Grounding check failed. Please try again.');
@@ -985,10 +1057,17 @@
                     .map(itemIdx => `<div class="theme-item">${escapeHtml(items[itemIdx - 1])}</div>`)
                     .join('');
 
-                const quotesHtml = theme.supporting_quotes && theme.supporting_quotes.length > 0
-                    ? theme.supporting_quotes
-                        .map(quote => `<div class="supporting-quote">"${escapeHtml(quote)}"</div>`)
-                        .join('')
+                const checks = theme.quote_checks && theme.quote_checks.length
+                    ? theme.quote_checks
+                    : (theme.supporting_quotes || []).map(q => ({ quote: q, verified: null }));
+                const quotesHtml = checks.length > 0
+                    ? checks.map(c => {
+                        const flag = c.verified === true
+                            ? '<span class="quote-flag ok">✓ in source</span>'
+                            : c.verified === false ? '<span class="quote-flag">not found in source</span>' : '';
+                        const cls = c.verified === false ? 'supporting-quote quote-unverified' : 'supporting-quote';
+                        return `<div class="${cls}">"${escapeHtml(c.quote)}"${flag}</div>`;
+                    }).join('')
                     : '<p style="color: #9ca3af; font-size: 12px;">No quotes found</p>';
 
                 const groundingClass = theme.grounding_check ? 'grounding-grounded' : 'grounding-needs-review';
